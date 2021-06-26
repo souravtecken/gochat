@@ -43,10 +43,12 @@ func ChatPage(app *tview.Application, username string, host string) {
 	chatPane := tview.NewTextView().SetDynamicColors(true).SetChangedFunc(func() {
 		app.Draw()
 	})
-	usersPane := tview.NewBox().SetBorder(true).SetTitle("Users")
+	usersPane := tview.NewTextView().SetDynamicColors(true).SetChangedFunc(func() {
+		app.Draw()
+	})
 	inputField := tview.NewInputField()
 
-	go chat.ReceiveMessages(&conn, chatPane)
+	go chat.ReceiveMessages(&conn, chatPane, usersPane)
 
 	handleSendMessage := func(key tcell.Key) {
 		if key == tcell.KeyEnter {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -12,23 +11,41 @@ func encodeData(data interface{}, messageType string) []byte {
 	messageObj["data"] = data
 	messageObj["type"] = messageType
 	jsonBytes, _ := json.Marshal(&messageObj)
-	jsonBytes = bytes.Trim(jsonBytes, "\x00")
 	return jsonBytes
 }
 
-func broadcastMessage(userConMap map[string]net.Conn, message []byte) {
+func broadcastData(userConMap map[string]net.Conn, data []byte) {
 	for _, conn := range userConMap {
-		conn.Write(message)
+		fmt.Fprintf(conn, "%s\n", data)
 	}
 }
 
-func sendMessage(useConMap map[string]net.Conn, message string, username string) {
+func sendAllUsers(conn *net.Conn, userConMap map[string]net.Conn) {
+	users := make([]string, 0, len(userConMap))
+	for user := range userConMap {
+		users = append(users, user)
+	}
+	data := encodeData(users, "users")
+	fmt.Fprintf(*conn, "%s\n", data)
+	fmt.Println(string(data))
+}
+
+func sendUserJoin(user string, userConMap map[string]net.Conn) {
+	data := encodeData(user, "userJoin")
+	broadcastData(userConMap, data)
+}
+
+func sendUserLeave(user string, userConMap map[string]net.Conn) {
+	data := encodeData(user, "userLeave")
+	broadcastData(userConMap, data)
+}
+
+func sendMessage(userConMap map[string]net.Conn, message string, username string) {
 	messageBody := make(map[string]interface{})
 	messageBody["message"] = message
 	messageBody["username"] = username
 	data := encodeData(messageBody, "message")
-	fmt.Println(string(data))
-	broadcastMessage(useConMap, data)
+	broadcastData(userConMap, data)
 }
 
 func handleConnection(conn net.Conn, userConMap map[string]net.Conn) {
@@ -40,8 +57,14 @@ func handleConnection(conn net.Conn, userConMap map[string]net.Conn) {
 	n, _ := conn.Read(buf[0:])
 	username := string(buf[:n])
 
+	// Send list of all current users
+	sendAllUsers(&conn, userConMap)
+
 	// Add user to connection map
 	userConMap[username] = conn
+
+	// Inform all users about joining
+	sendUserJoin(username, userConMap)
 
 	fmt.Println(conn.RemoteAddr(), "is", username)
 	for {
@@ -55,6 +78,9 @@ func handleConnection(conn net.Conn, userConMap map[string]net.Conn) {
 		fmt.Println(message, n)
 	}
 	delete(userConMap, username)
+
+	// Inform all users about leaving
+	sendUserLeave(username, userConMap)
 	fmt.Println("Connection closed:", conn.RemoteAddr())
 }
 
