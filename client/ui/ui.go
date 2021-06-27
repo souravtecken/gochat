@@ -43,9 +43,11 @@ func ChatPage(app *tview.Application, username string, host string) {
 	chatPane := tview.NewTextView().SetDynamicColors(true).SetChangedFunc(func() {
 		app.Draw()
 	})
+	chatPane.SetBorder(true).SetTitle(username)
 	usersPane := tview.NewTextView().SetDynamicColors(true).SetChangedFunc(func() {
 		app.Draw()
 	})
+	usersPane.SetBorder(true).SetTitle("Users")
 	inputField := tview.NewInputField()
 
 	go chat.ReceiveMessages(&conn, chatPane, usersPane)
